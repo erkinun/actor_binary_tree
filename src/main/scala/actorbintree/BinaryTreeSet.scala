@@ -66,7 +66,13 @@ class BinaryTreeSet extends Actor {
 
   // optional
   /** Accepts `Operation` and `GC` messages. */
-  val normal: Receive = { case _ => ??? }
+  val normal: Receive = {
+    case Insert(req, id, elem) => root ! Insert(self, id, elem)
+    case Contains(req, id, elem) => root ! Contains(self, id, elem)
+    case Remove(req, id, elem) => root ! Remove(req, id, elem)
+    case _ => println("any message")
+
+  }
 
   // optional
   /** Handles messages while garbage collection is performed.
