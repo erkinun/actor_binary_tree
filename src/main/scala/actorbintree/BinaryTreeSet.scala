@@ -118,18 +118,10 @@ class BinaryTreeNode(val elem: Int, initiallyRemoved: Boolean) extends Actor {
       if (!removed && elem == e) req ! OperationFinished(id) //what if elem == e and node is removed?
       else {
         if (elem > e) {
-          if (subtrees.contains(Right)) subtrees(Right) ! Insert(req, id, e)
-          else {
-            subtrees = subtrees + (Right -> context.actorOf(BinaryTreeNode.props(e, initiallyRemoved = false)))
-            req ! OperationFinished(id)
-          }
+          insertToChild(Right, req, id, e)
         }
         else {
-          if (subtrees.contains(Left)) subtrees(Left) ! Insert(req, id, e)
-          else {
-            subtrees = subtrees + (Left -> context.actorOf(BinaryTreeNode.props(e, initiallyRemoved = false)))
-            req ! OperationFinished(id)
-          }
+          insertToChild(Left, req, id, e)
         }
       }
 
@@ -137,6 +129,14 @@ class BinaryTreeNode(val elem: Int, initiallyRemoved: Boolean) extends Actor {
   }
 
   // optional
+  def insertToChild(pos: Position, req: ActorRef, id: Int, e: Int): Unit = {
+    if (subtrees.contains(pos)) subtrees(pos) ! Insert(req, id, e)
+    else {
+      subtrees = subtrees + (pos -> context.actorOf(BinaryTreeNode.props(e, initiallyRemoved = false)))
+      req ! OperationFinished(id)
+    }
+  }
+
   /** `expected` is the set of ActorRefs whose replies we are waiting for,
     * `insertConfirmed` tracks whether the copy of this node to the new tree has been confirmed.
     */
