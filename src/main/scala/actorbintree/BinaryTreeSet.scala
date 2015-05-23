@@ -115,7 +115,7 @@ class BinaryTreeNode(val elem: Int, initiallyRemoved: Boolean) extends Actor {
         else { req ! ContainsResult(id, result = false) }
       }
     case Insert(req, id, e) =>
-      if (!removed && elem == e) req ! OperationFinished(id) //what if elem == e and node is removed?
+      if (!removed && elem == e) req ! OperationFinished(id) //TODO what if elem == e and node is removed?
       else {
         if (elem > e) {
           insertToChild(Right, req, id, e)
@@ -124,7 +124,14 @@ class BinaryTreeNode(val elem: Int, initiallyRemoved: Boolean) extends Actor {
           insertToChild(Left, req, id, e)
         }
       }
-
+    case Remove(req, id, e) =>
+      if (elem == e) {
+        removed = true
+        req ! OperationFinished(id)
+      }
+      else if (elem > e && subtrees.contains(Right)) subtrees(Right) ! Remove(req, id, e)
+      else if (elem < e && subtrees.contains(Left)) subtrees(Left) ! Remove(req, id, e)
+      else req ! OperationFinished(id)
     case _ => ???
   }
 
