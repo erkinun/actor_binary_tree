@@ -70,6 +70,12 @@ class BinaryTreeSet extends Actor {
     case Insert(req, id, elem) => root ! Insert(req, id, elem)
     case Contains(req, id, elem) => root ! Contains(req, id, elem)
     case Remove(req, id, elem) => root ! Remove(req, id, elem)
+    case GC =>
+      val newRoot = createRoot
+      root ! CopyTo(newRoot)
+      context become garbageCollecting(newRoot)
+    case CopyFinished => //TODO handle pendingQueue
+      context become normal
     case _ => ???
   }
 
@@ -78,6 +84,8 @@ class BinaryTreeSet extends Actor {
     * `newRoot` is the root of the new binary tree where we want to copy
     * all non-removed elements into.
     */
+  //TODO use pendingQueue for getting the message
+  //TODO also handle CopyFinished here!
   def garbageCollecting(newRoot: ActorRef): Receive = ???
 
 }
@@ -135,6 +143,11 @@ class BinaryTreeNode(val elem: Int, initiallyRemoved: Boolean) extends Actor {
       else if (elem > e && subtrees.contains(Right)) subtrees(Right) ! Remove(req, id, e)
       else if (elem < e && subtrees.contains(Left)) subtrees(Left) ! Remove(req, id, e)
       else req ! OperationFinished(id)
+    case CopyTo(root) =>
+      if (!removed) root ! Insert(self, 1, elem)
+      //TODO copy subtrees as well subtrees.toVector.foreach((pos, act) => act ! CopyTo(root))
+      //TODO handle set as well
+      context become copying(Set(), insertConfirmed = false)
     case _ => ???
   }
 
@@ -150,6 +163,7 @@ class BinaryTreeNode(val elem: Int, initiallyRemoved: Boolean) extends Actor {
   /** `expected` is the set of ActorRefs whose replies we are waiting for,
     * `insertConfirmed` tracks whether the copy of this node to the new tree has been confirmed.
     */
+  //TODO define insertoperation and copyFinished here
   def copying(expected: Set[ActorRef], insertConfirmed: Boolean): Receive = ???
 
 
