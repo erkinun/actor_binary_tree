@@ -109,11 +109,11 @@ class BinaryTreeNode(val elem: Int, initiallyRemoved: Boolean) extends Actor {
   /** Handles `Operation` messages and `CopyTo` requests. */
   val normal: Receive = {
     case Contains(req, id, e) => {
-      if (!removed && elem == e) { req ! ContainsResult(id, true) }
+      if (!removed && elem == e) { req ! ContainsResult(id, result = true) }
       else {
         if (elem > e && subtrees.contains(Right)) { subtrees(Right) ! Contains(req, id, e) }
         else if (elem < e && subtrees.contains(Left)) { subtrees(Left) ! Contains(req, id, e) }
-        else { req ! ContainsResult(id, false) }
+        else { req ! ContainsResult(id, result = false) }
       }
     }
     case _ => ???
