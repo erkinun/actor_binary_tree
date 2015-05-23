@@ -115,7 +115,10 @@ class BinaryTreeNode(val elem: Int, initiallyRemoved: Boolean) extends Actor {
         else { req ! ContainsResult(id, result = false) }
       }
     case Insert(req, id, e) =>
-      if (!removed && elem == e) req ! OperationFinished(id) //TODO what if elem == e and node is removed?
+      if (elem == e) {
+        removed = false // flagging the node to be alive if inserted again
+        req ! OperationFinished(id)
+      }
       else {
         if (elem > e) {
           insertToChild(Right, req, id, e)
