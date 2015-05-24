@@ -74,8 +74,6 @@ class BinaryTreeSet extends Actor {
       val newRoot = createRoot
       root ! CopyTo(newRoot)
       context become garbageCollecting(newRoot)
-    case CopyFinished => //TODO handle pendingQueue
-      context become normal
     case _ => ???
   }
 
@@ -86,7 +84,16 @@ class BinaryTreeSet extends Actor {
     */
   //TODO use pendingQueue for getting the message
   //TODO also handle CopyFinished here!
-  def garbageCollecting(newRoot: ActorRef): Receive = ???
+  def garbageCollecting(newRoot: ActorRef): Receive = {
+    case op: Operation =>
+      pendingQueue = pendingQueue :+ op
+      garbageCollecting(newRoot)
+    case CopyFinished =>
+      pendingQueue foreach (op => newRoot ! op)
+      root ! PoisonPill
+      root = newRoot
+      context become normal
+  }
 
 }
 
