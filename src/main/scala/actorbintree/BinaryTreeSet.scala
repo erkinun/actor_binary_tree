@@ -71,6 +71,7 @@ class BinaryTreeSet extends Actor {
     case Contains(req, id, elem) => root ! Contains(req, id, elem)
     case Remove(req, id, elem) => root ! Remove(req, id, elem)
     case GC =>
+      //println("GC op during normal")
       val newRoot = createRoot
       root ! CopyTo(newRoot)
       context become garbageCollecting(newRoot)
@@ -85,12 +86,14 @@ class BinaryTreeSet extends Actor {
   //TODO use pendingQueue for getting the message
   //TODO also handle CopyFinished here!
   def garbageCollecting(newRoot: ActorRef): Receive = {
+    case GC => //do nothing
     case op: Operation =>
       pendingQueue = pendingQueue :+ op
-      garbageCollecting(newRoot)
     case CopyFinished =>
-      pendingQueue foreach (op => newRoot ! op)
+      //println(pendingQueue.size + " jobs are waiting")
       root ! PoisonPill
+      pendingQueue foreach (op => newRoot ! op)
+      pendingQueue = Queue.empty[Operation]
       root = newRoot
       context become normal
   }
@@ -151,13 +154,18 @@ class BinaryTreeNode(val elem: Int, initiallyRemoved: Boolean) extends Actor {
       else if (elem < e && subtrees.contains(Left)) subtrees(Left) ! Remove(req, id, e)
       else req ! OperationFinished(id)
     case CopyTo(root) =>
-      if (!removed) root ! Insert(root, 1, elem)
-      val waitSet = subtrees.toVector.map({case (pos, ref) =>
-        ref ! CopyTo(root)
-        ref
-      }).toSet
-      context become copying(waitSet, insertConfirmed = false)
-    case _ => ???
+      if (removed && subtrees.isEmpty) {
+        context.parent ! CopyFinished
+        context become normal
+      }
+      else {
+        if (!removed) root ! Insert(self, 1, elem)
+        val waitSet = subtrees.toVector.map({case (pos, ref) =>
+          ref ! CopyTo(root)
+          ref
+        }).toSet
+        context become copying(waitSet, insertConfirmed = removed)
+      }
   }
 
   // optional
@@ -175,15 +183,19 @@ class BinaryTreeNode(val elem: Int, initiallyRemoved: Boolean) extends Actor {
   //TODO define insertoperation and copyFinished here
   def copying(expected: Set[ActorRef], insertConfirmed: Boolean): Receive = {
     case OperationFinished(id) =>
-      if (expected.isEmpty) context.parent ! CopyFinished
-      else copying(expected, insertConfirmed = true)
+      if (expected.isEmpty) {
+        context.parent ! CopyFinished
+        context become normal
+      }
+      else context become copying(expected, insertConfirmed = true)
     case CopyFinished =>
       val newSet = expected - sender()
       if (newSet.isEmpty && insertConfirmed) {
         context.parent ! CopyFinished
         context become normal
       }
-      else copying(newSet, insertConfirmed)
+      else context become copying(newSet, insertConfirmed)
+    case _ => println("some undefined operation here")
   }
 
 

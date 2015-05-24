@@ -52,6 +52,61 @@ class BinaryTreeSuite(_system: ActorSystem) extends TestKit(_system) with FunSui
     expectMsg(OperationFinished(1))
   }
 
+  test("GC with empty tree") {
+    println("trying GC with empty tree")
+    val topNode = system.actorOf(Props[BinaryTreeSet])
+    topNode ! GC
+  }
+
+  test("Simplest test with GC"){
+    val topNode = system.actorOf(Props[BinaryTreeSet])
+    topNode ! Insert(testActor, id = 1, 1)
+    expectMsg(OperationFinished(1))
+    topNode ! GC
+
+    topNode ! Insert(testActor, id = 2, 2)
+    expectMsg(OperationFinished(2))
+
+    topNode ! GC
+
+    topNode ! Insert(testActor, id = 3, 3)
+    topNode ! Insert(testActor, id = 4, 4)
+    topNode ! Insert(testActor, id = 5, 5)
+    topNode ! Insert(testActor, id = 6, 6)
+
+    expectMsg(OperationFinished(3))
+    expectMsg(OperationFinished(4))
+    expectMsg(OperationFinished(5))
+    expectMsg(OperationFinished(6))
+  }
+
+  test("basic GC") {
+    val topNode = system.actorOf(Props[BinaryTreeSet])
+
+    topNode ! Insert(testActor, id = 1, 1)
+    topNode ! Insert(testActor, id = 2, 2)
+    topNode ! Insert(testActor, id = 3, 3)
+
+    expectMsg(OperationFinished(1))
+    expectMsg(OperationFinished(2))
+    expectMsg(OperationFinished(3))
+
+    topNode ! Remove(testActor, id = 4, 2)
+    topNode ! GC
+    topNode ! Contains(testActor, id = 5, 2)
+    topNode ! Contains(testActor, id = 6, 3)
+
+    expectMsg(OperationFinished(4))
+    expectMsg(ContainsResult(5, false))
+    expectMsg(ContainsResult(6, true))
+
+    topNode ! Insert(testActor, id = 7, 2)
+    topNode ! Contains(testActor, id = 8, 2)
+
+    expectMsg(OperationFinished(7))
+    expectMsg(ContainsResult(8, true))
+  }
+
   test("Simplest test with removal"){
     val topNode = system.actorOf(Props[BinaryTreeSet])
     topNode ! Insert(testActor, id = 1, 1)
