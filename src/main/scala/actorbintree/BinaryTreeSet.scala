@@ -144,10 +144,12 @@ class BinaryTreeNode(val elem: Int, initiallyRemoved: Boolean) extends Actor {
       else if (elem < e && subtrees.contains(Left)) subtrees(Left) ! Remove(req, id, e)
       else req ! OperationFinished(id)
     case CopyTo(root) =>
-      if (!removed) root ! Insert(self, 1, elem)
-      //TODO copy subtrees as well subtrees.toVector.foreach((pos, act) => act ! CopyTo(root))
-      //TODO handle set as well
-      context become copying(Set(), insertConfirmed = false)
+      if (!removed) root ! Insert(root, 1, elem)
+      val waitSet = subtrees.toVector.map({case (pos, ref) =>
+        ref ! CopyTo(root)
+        ref
+      }).toSet
+      context become copying(waitSet, insertConfirmed = false)
     case _ => ???
   }
 
@@ -164,7 +166,18 @@ class BinaryTreeNode(val elem: Int, initiallyRemoved: Boolean) extends Actor {
     * `insertConfirmed` tracks whether the copy of this node to the new tree has been confirmed.
     */
   //TODO define insertoperation and copyFinished here
-  def copying(expected: Set[ActorRef], insertConfirmed: Boolean): Receive = ???
+  def copying(expected: Set[ActorRef], insertConfirmed: Boolean): Receive = {
+    case OperationFinished(id) =>
+      if (expected.isEmpty) context.parent ! CopyFinished
+      else copying(expected, insertConfirmed = true)
+    case CopyFinished =>
+      val newSet = expected - sender()
+      if (newSet.isEmpty && insertConfirmed) {
+        context.parent ! CopyFinished
+        context become normal
+      }
+      else copying(newSet, insertConfirmed)
+  }
 
 
 }
